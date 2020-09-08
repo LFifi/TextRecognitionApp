@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
     final int CROP_PIC = 2;
     Bitmap imageBitmap;
     String currentPhotoPath;
-    File photoFile;
+    File photoFile, photoFile2;
     Uri photoURI;
 
     @Override
@@ -115,12 +115,27 @@ int s=R.string.project_id;
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
            // Bundle extras = data.getExtras();
            // imageBitmap = (Bitmap) extras.get("data");
-            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-            bmOptions.inSampleSize=4;
-            imageBitmap= BitmapFactory.decodeFile(String.valueOf(photoFile),bmOptions);
-            imageView.setImageBitmap(imageBitmap);
-            textView.setText(imageBitmap.getHeight()+"x"+imageBitmap.getWidth());
+
+           // imageView.setImageURI(photoURI);
+         //  imageView.setImageURI(Uri.fromFile(photoFile));
+            // BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+           // bmOptions.inSampleSize=4;
+           // imageBitmap= BitmapFactory.decodeFile(String.valueOf(photoFile),bmOptions);
+           // imageView.setImageBitmap(imageBitmap);
+           // textView.setText(imageBitmap.getHeight()+"x"+imageBitmap.getWidth());
+            performCrop();
+            //imageView.setImageURI(photoURI);
         }
+        if (requestCode == CROP_PIC && resultCode == RESULT_OK) {
+             BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+             bmOptions.inSampleSize=1;
+             imageBitmap= BitmapFactory.decodeFile(String.valueOf(photoFile),bmOptions);
+             imageView.setImageBitmap(imageBitmap);
+             textView.setText(imageBitmap.getHeight()+"x"+imageBitmap.getWidth());
+            Log.e("save", "do it");
+
+        }
+
 
     }
 
@@ -248,7 +263,7 @@ Log.e("mojlog", elm.getText()+" pos:"+elm.getCornerPoints()[0]);
                 ", sol:"+prod.getSol());
     }
 
-    private File createImageFile() throws IOException {
+    public File createImageFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
@@ -270,7 +285,7 @@ Log.e("mojlog", elm.getText()+" pos:"+elm.getCornerPoints()[0]);
             for (FirebaseVisionText.Line line2 : block2.getLines()){
                 for (FirebaseVisionText.Element elm2 : line2.getElements()) {
                     Log.i("mojlog",elm2.getText()+";"+elm2.getCornerPoints()[0].y+";"+p.y);
-                    if (p != null && elm2.getCornerPoints()[0].y > (p.y - 30) && elm2.getCornerPoints()[0].y < (p.y + 30)) {
+                    if (p != null && elm2.getCornerPoints()[0].y > (p.y - imageBitmap.getHeight()/20) && elm2.getCornerPoints()[0].y < (p.y + imageBitmap.getHeight()/20)) {
                         Log.i("mojlog4",elm2.getText()+";"+elm2.getCornerPoints()[0].y+";"+p.y);
                         if (obj.isDouble(elm2.getText()) ||
                                 (elm2.getText().length()>1 && obj.isDouble(elm2.getText().substring(0, elm2.getText().length() - 1)))) {
@@ -311,6 +326,45 @@ Log.e("mojlog", elm.getText()+" pos:"+elm.getCornerPoints()[0]);
     }
 
 
+
+    private void performCrop() {
+        try {
+            photoFile2=createImageFile();
+            Intent cropIntent = new Intent("com.android.camera.action.CROP");
+
+           // File f = new File(picUri);
+            Uri contentUri  = FileProvider.getUriForFile(this,
+                                    "com.example.textrecognitionapp.fileprovider",
+                                   photoFile);
+            getApplicationContext().grantUriPermission("com.android.camera",
+                    contentUri,
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            cropIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            cropIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+
+            cropIntent.setDataAndType(contentUri, "image/*");
+            cropIntent.putExtra("crop", "true");
+            //cropIntent.putExtra("aspectX", 2);
+           // cropIntent.putExtra("aspectY", 1);
+           // cropIntent.putExtra("outputX", 200); //512
+           // cropIntent.putExtra("outputY", 200); //512
+            cropIntent.putExtra("noFaceDetection", true);
+            cropIntent.putExtra("return-data", false);
+            cropIntent.putExtra ("outputFormat", Bitmap.CompressFormat.JPEG.name ());
+            //cropIntent.putExtra (MediaStore.EXTRA_OUTPUT, photoURI);
+            cropIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+            startActivityForResult(cropIntent, CROP_PIC);
+        }
+        catch (ActivityNotFoundException e) {
+            String errorMessage = "your device doesn't support the crop action!";
+            Toast toast = Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT);
+            toast.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 
 }
